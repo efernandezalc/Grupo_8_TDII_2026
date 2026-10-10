@@ -1,0 +1,229 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2026 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
+#include "API_GPIO.h"
+#include "API_Delay.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+#define Tiempo_1   100
+#define Tiempo_2   250
+#define Tiempo_3   500
+#define Tiempo_4   1000
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+
+/* USER CODE BEGIN PV */
+
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+//static void MX_GPIO_Init(void);
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
+
+  /* USER CODE BEGIN 1 */
+
+  /* USER CODE END 1 */
+
+  /* MCU Configuration--------------------------------------------------------*/
+
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
+
+  /* USER CODE BEGIN Init */
+  uint16_t leds[3] = {LD1_Pin, LD2_Pin, LD3_Pin};
+  uint16_t tiempos[4] = {Tiempo_1, Tiempo_2, Tiempo_3, Tiempo_4};   // los 4 tiempos de alternancia
+
+  buttonStatus_t Boton; // guarda el estado del botón leido en cada vuelta
+  buttonStatus_t Boton_Anterior = false; //guarda como estaba el botón en la vuelta anterior, arranca no presionado
+  uint8_t indice_Tiempo = 0;   // 0=Tiempo1(100ms), 1=Tiempo2(250ms), 2=Tiempo3(500ms), 3=Tiempo4(1000ms)
+
+  // Retardo no bloqueante
+   delay_t miDelay;                          // guarda el estado del retardo (inicio, duración, si está corriendo)
+   delayInit(&miDelay, tiempos[indice_Tiempo]); // arranca con la duración correspondiente al índice inicial (100 ms)
+
+   bool_t ledEncendido = false; // indica si los 3 LEDs están actualmente prendidos o apagados
+
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  /* USER CODE BEGIN 2 */
+
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+	  // Lectura y detección del apretón del botón, usando la función del driver
+	 	   Boton = readButton_GPIO();
+	 	   if (Boton == true && Boton_Anterior == false)
+	 	   {
+	 	     indice_Tiempo = indice_Tiempo + 1;
+	 	     if (indice_Tiempo > 3)
+	 	     {
+	 	       indice_Tiempo = 0;   // vuelve al Tiempo 1
+	 	     }
+	 	    delayWrite(&miDelay, tiempos[indice_Tiempo]); // actualizamos la duración del delay
+
+	 	      miDelay.running = false;  // Reiniciamos el conteo para que el nuevo tiempo se empiece a contar desde ese instante
+
+	 	   }
+	 	   Boton_Anterior = Boton; //guarda el estado del boton
+
+	 	  if (delayRead(&miDelay))
+	 	      {
+	 	        if (!ledEncendido)
+	 	        {
+	 	          // se prenden los 3 juntos
+	 	          writeLedOn_GPIO(leds[0]);
+	 	          writeLedOn_GPIO(leds[1]);
+	 	          writeLedOn_GPIO(leds[2]);
+	 	          ledEncendido = true;
+	 	        }
+	 	        else
+	 	        {
+	 	          // se apagan los 3 juntos
+	 	          writeLedOff_GPIO(leds[0]);
+	 	          writeLedOff_GPIO(leds[1]);
+	 	          writeLedOff_GPIO(leds[2]);
+	 	          ledEncendido = false;
+	 	        }
+	 	      }
+	 }
+}
+
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/* USER CODE BEGIN 4 */
+
+/* USER CODE END 4 */
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
+  /* USER CODE END Error_Handler_Debug */
+}
+#ifdef USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+  /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */

@@ -1,0 +1,3 @@
+../Drivers/API/Src/API_GPIO.c:20:6:MX_GPIO_Init	40	static
+../Drivers/API/Src/API_GPIO.c:51:6:writeLedOn_GPIO	16	static
+../Drivers/API/Src/API_GPIO.c:62:6:writeLedOff_GPIO	16	static
